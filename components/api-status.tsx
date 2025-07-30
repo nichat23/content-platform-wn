@@ -1,44 +1,36 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, AlertCircle, RefreshCw, Clock } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { RefreshCw, CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react"
+
+type ConnectionStatus = "checking" | "connected" | "error" | "overloaded" | "quota_exceeded" | "auth_error"
 
 export function ApiStatus() {
-  const [status, setStatus] = useState<"checking" | "connected" | "error" | "overloaded">("checking")
-  const [lastCheck, setLastCheck] = useState<Date | null>(null)
-  const [errorDetails, setErrorDetails] = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
+  const [status, setStatus] = useState<ConnectionStatus>("checking")
+  const [lastCheck, setLastCheck] = useState<string>("")
+  const [details, setDetails] = useState<string>("")
 
   const checkConnection = async () => {
     setStatus("checking")
-    setErrorDetails(null)
-
     try {
       const response = await fetch("/api/test-connection")
       const data = await response.json()
 
-      if (data.success) {
+      if (response.ok && data.status === "connected") {
         setStatus("connected")
-        setErrorDetails(null)
-        setRetryCount(0)
+        setDetails("Conexión exitosa con Gemini AI")
       } else {
-        if (data.details?.includes("overloaded") || data.details?.includes("busy")) {
-          setStatus("overloaded")
-          setErrorDetails("Servicio temporalmente sobrecargado")
-        } else {
-          setStatus("error")
-          setErrorDetails(data.details || "Error desconocido")
-        }
-        setRetryCount((prev) => prev + 1)
+        setStatus(data.status || "error")
+        setDetails(data.message || data.details || "Error desconocido")
       }
-      setLastCheck(new Date())
+
+      setLastCheck(new Date().toLocaleTimeString("es-CO"))
     } catch (error) {
       setStatus("error")
-      setErrorDetails("Error de red o servidor")
-      setRetryCount((prev) => prev + 1)
-      setLastCheck(new Date())
+      setDetails("Error de red al conectar con la API")
+      setLastCheck(new Date().toLocaleTimeString("es-CO"))
     }
   }
 
@@ -46,74 +38,74 @@ export function ApiStatus() {
     checkConnection()
   }, [])
 
-  const getStatusColor = () => {
+  const getStatusInfo = () => {
     switch (status) {
+      case "checking":
+        return {
+          icon: <Loader2 className="h-4 w-4 animate-spin" />,
+          badge: <Badge variant="secondary">Verificando...</Badge>,
+          color: "text-gray-600",
+        }
       case "connected":
-        return "default"
+        return {
+          icon: <CheckCircle className="h-4 w-4" />,
+          badge: (
+            <Badge variant="default" className="bg-green-600">
+              Conectado
+            </Badge>
+          ),
+          color: "text-green-600",
+        }
       case "overloaded":
-        return "secondary"
-      case "error":
-        return "destructive"
+        return {
+          icon: <AlertCircle className="h-4 w-4" />,
+          badge: <Badge variant="destructive">Sobrecargado</Badge>,
+          color: "text-orange-600",
+        }
+      case "quota_exceeded":
+        return {
+          icon: <XCircle className="h-4 w-4" />,
+          badge: <Badge variant="destructive">Cuota Excedida</Badge>,
+          color: "text-red-600",
+        }
+      case "auth_error":
+        return {
+          icon: <XCircle className="h-4 w-4" />,
+          badge: <Badge variant="destructive">Error de Auth</Badge>,
+          color: "text-red-600",
+        }
       default:
-        return "secondary"
+        return {
+          icon: <XCircle className="h-4 w-4" />,
+          badge: <Badge variant="destructive">Error</Badge>,
+          color: "text-red-600",
+        }
     }
   }
 
-  const getStatusText = () => {
-    switch (status) {
-      case "checking":
-        return "Verificando conexión..."
-      case "connected":
-        return "Gemini AI Conectado"
-      case "overloaded":
-        return "Servicio Sobrecargado"
-      case "error":
-        return "Error de conexión"
-      default:
-        return "Estado desconocido"
-    }
-  }
-
-  const getStatusIcon = () => {
-    switch (status) {
-      case "checking":
-        return <RefreshCw className="h-3 w-3 animate-spin" />
-      case "connected":
-        return <CheckCircle className="h-3 w-3" />
-      case "overloaded":
-        return <Clock className="h-3 w-3" />
-      case "error":
-        return <AlertCircle className="h-3 w-3" />
-      default:
-        return <AlertCircle className="h-3 w-3" />
-    }
-  }
+  const statusInfo = getStatusInfo()
 
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-      <div className="flex items-center gap-2">
-        <Badge variant={getStatusColor()} className="flex items-center gap-1">
-          {getStatusIcon()}
-          {getStatusText()}
-        </Badge>
-
-        {lastCheck && (
-          <span className="text-xs text-gray-500">
-            Última verificación: {lastCheck.toLocaleTimeString()}
-            {retryCount > 0 && ` (${retryCount} reintentos)`}
-          </span>
-        )}
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className={`flex items-center gap-2 ${statusInfo.color}`}>
+          {statusInfo.icon}
+          <span className="text-sm font-medium">Estado de API:</span>
+        </div>
+        {statusInfo.badge}
       </div>
 
       <div className="flex items-center gap-2">
-        {errorDetails && status !== "connected" && (
-          <span className="text-xs text-gray-600 max-w-xs truncate" title={errorDetails}>
-            {errorDetails}
-          </span>
-        )}
-
-        <Button variant="ghost" size="sm" onClick={checkConnection} disabled={status === "checking"}>
-          <RefreshCw className={`h-3 w-3 ${status === "checking" ? "animate-spin" : ""}`} />
+        {lastCheck && <span className="text-xs text-gray-500">Última verificación: {lastCheck}</span>}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={checkConnection}
+          disabled={status === "checking"}
+          className="h-8 bg-transparent"
+        >
+          <RefreshCw className={`h-3 w-3 mr-1 ${status === "checking" ? "animate-spin" : ""}`} />
+          Verificar
         </Button>
       </div>
     </div>

@@ -9,8 +9,11 @@ export async function GET() {
     try {
       console.log(`Intento ${attempt} de conexión con Gemini AI...`)
 
+      // Usar API key directamente para pruebas
       const result = await generateText({
-        model: google("gemini-1.5-flash-8b"),
+        model: google("gemini-1.5-flash-8b", {
+          apiKey: "AIzaSyBQcTnzfhJRp2c7Q7UVgqm9b0wl5L4aMhk",
+        }),
         prompt: "Responde solo con 'OK' si puedes leer este mensaje.",
         maxTokens: 10,
         temperature: 0,
@@ -28,12 +31,10 @@ export async function GET() {
       lastError = error
       console.error(`Error en test de conexión (intento ${attempt}):`, error)
 
-      // Si es el último intento, no reintentar
       if (attempt === maxRetries) {
         break
       }
 
-      // Manejo específico de errores de sobrecarga
       if (error.message?.includes("overloaded") || error.message?.includes("busy")) {
         const delayMs = Math.pow(2, attempt) * 1000 + Math.random() * 1000
         console.log(`Modelo sobrecargado, esperando ${delayMs}ms antes del reintento ${attempt + 1}`)
@@ -41,12 +42,10 @@ export async function GET() {
         continue
       }
 
-      // Para otros errores, esperar menos tiempo
       await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
     }
   }
 
-  // Manejo de errores después de todos los reintentos
   if (lastError.message?.includes("overloaded") || lastError.message?.includes("busy")) {
     return Response.json(
       {
@@ -84,7 +83,6 @@ export async function GET() {
     )
   }
 
-  // Error genérico
   return Response.json(
     {
       status: "error",

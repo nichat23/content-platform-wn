@@ -15,9 +15,11 @@ export async function POST(req: Request) {
     try {
       const { messages } = await req.json()
 
-      // Usar modelo menos congestionado y con configuración optimizada
+      // Usar API key directamente para pruebas
       const result = await streamText({
-        model: google("gemini-1.5-flash-8b"),
+        model: google("gemini-1.5-flash-8b", {
+          apiKey: "AIzaSyBQcTnzfhJRp2c7Q7UVgqm9b0wl5L4aMhk",
+        }),
         system: `Eres un asistente educativo especializado en ayudar a profesores con contenidos temáticos de sus asignaturas. 
         
         Tu rol es:
@@ -32,7 +34,7 @@ export async function POST(req: Request) {
         Siempre pregunta por el nivel educativo y la asignatura específica si no está claro en la consulta.
         Incluye ejemplos prácticos y sugerencias de actividades cuando sea apropiado.`,
         messages,
-        maxTokens: 800, // Reducido para mejor rendimiento
+        maxTokens: 800,
         temperature: 0.7,
       })
 
@@ -41,25 +43,22 @@ export async function POST(req: Request) {
       lastError = error
       console.error(`Error en API de chat (intento ${attempt}):`, error)
 
-      // Si es el último intento, no reintentar
       if (attempt === maxRetries) {
         break
       }
 
-      // Manejo específico de errores de sobrecarga
       if (error.message?.includes("overloaded") || error.message?.includes("busy")) {
-        const delayMs = Math.pow(2, attempt) * 1000 + Math.random() * 1000 // Delay exponencial con jitter
+        const delayMs = Math.pow(2, attempt) * 1000 + Math.random() * 1000
         console.log(`Modelo sobrecargado, esperando ${delayMs}ms antes del reintento ${attempt + 1}`)
         await delay(delayMs)
         continue
       }
 
-      // Para otros errores, esperar menos tiempo
       await delay(1000 * attempt)
     }
   }
 
-  // Manejo de errores después de todos los reintentos
+  // Manejo de errores
   if (lastError.message?.includes("overloaded") || lastError.message?.includes("busy")) {
     return new Response(
       JSON.stringify({
@@ -111,7 +110,6 @@ export async function POST(req: Request) {
     )
   }
 
-  // Error genérico
   return new Response(
     JSON.stringify({
       error: "api_error",
