@@ -17,9 +17,7 @@ export async function POST(req: Request) {
 
       // Usar modelo menos congestionado y con configuración optimizada
       const result = await streamText({
-        model: google("gemini-1.5-flash-8b", {
-          apiKey: "AIzaSyBQcTnzfhJRp2c7Q7UVgqm9b0wl5L4aMhk",
-        }),
+        model: google("gemini-1.5-flash-8b"),
         system: `Eres un asistente educativo especializado en ayudar a profesores con contenidos temáticos de sus asignaturas. 
         
         Tu rol es:
@@ -38,7 +36,7 @@ export async function POST(req: Request) {
         temperature: 0.7,
       })
 
-      return result.toAIStreamResponse()
+      return result.toDataStreamResponse()
     } catch (error: any) {
       lastError = error
       console.error(`Error en API de chat (intento ${attempt}):`, error)

@@ -2,66 +2,63 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Info, Clock, Zap, Shield, ChevronDown, ChevronUp } from "lucide-react"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { ChevronDown, ChevronUp, Info, Zap, Clock, AlertTriangle } from "lucide-react"
+import { ApiStatus } from "@/components/api-status"
 
 export function QuotaInfo() {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card className="mb-4 bg-blue-50 border-blue-200">
-        <CollapsibleTrigger asChild>
-          <CardHeader className="pb-3 cursor-pointer hover:bg-blue-100 transition-colors">
-            <CardTitle className="text-sm flex items-center justify-between text-blue-700">
-              <div className="flex items-center gap-2">
-                <Info className="h-4 w-4" />
-                Información del Sistema - Gemini AI
-              </div>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                {isOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              </Button>
-            </CardTitle>
-          </CardHeader>
-        </CollapsibleTrigger>
+    <Card className="mb-6 border-blue-200 bg-blue-50/50">
+      <CardHeader
+        className="pb-3 cursor-pointer hover:bg-blue-100/50 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <CardTitle className="flex items-center justify-between text-blue-800">
+          <div className="flex items-center gap-2">
+            <Info className="w-5 h-5" />
+            Sistema de IA Gemini
+          </div>
+          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+        </CardTitle>
+      </CardHeader>
 
-        <CollapsibleContent>
-          <CardContent className="pt-0 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center gap-2">
-                <Clock className="h-3 w-3 text-blue-600" />
-                <span>Límite: 15 consultas/minuto</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="h-3 w-3 text-blue-600" />
-                <span>Modelo: Gemini 1.5 Flash 8B (optimizado)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="h-3 w-3 text-blue-600" />
-                <span>Reintentos automáticos habilitados</span>
+      {isExpanded && (
+        <CardContent className="pt-0 space-y-4">
+          <ApiStatus />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-green-600" />
+              <div>
+                <div className="font-medium text-sm">Modelo</div>
+                <div className="text-xs text-gray-600">Gemini 1.5 Flash</div>
               </div>
             </div>
 
-            <div className="flex gap-2 flex-wrap">
-              <Badge variant="secondary" className="text-xs">
-                Sistema anti-sobrecarga
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                Delays inteligentes
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                Modelo menos congestionado
-              </Badge>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-blue-600" />
+              <div>
+                <div className="font-medium text-sm">Límite</div>
+                <div className="text-xs text-gray-600">15 consultas/min</div>
+              </div>
             </div>
 
-            <p className="text-xs text-blue-600">
-              ✅ Sistema optimizado para manejar alta demanda • 🔄 Reintentos automáticos con delays exponenciales
-            </p>
-          </CardContent>
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-orange-600" />
+              <div>
+                <div className="font-medium text-sm">Tokens</div>
+                <div className="text-xs text-gray-600">800 por respuesta</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-xs text-gray-600 bg-white/50 p-3 rounded-lg">
+            <strong>Recomendaciones:</strong> Para evitar límites de cuota, espera unos segundos entre consultas. Si
+            experimentas errores de sobrecarga, el sistema reintentará automáticamente.
+          </div>
+        </CardContent>
+      )}
+    </Card>
   )
 }

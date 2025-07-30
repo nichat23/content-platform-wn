@@ -1,30 +1,28 @@
 import { google } from "@ai-sdk/google"
 import { generateText } from "ai"
 
-// Función para esperar
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
 export async function GET() {
-  const maxRetries = 2
+  const maxRetries = 3
   let lastError: any
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      console.log(`Intento ${attempt} de conexión con Gemini AI...`)
+
       const result = await generateText({
-        model: google("gemini-1.5-flash-8b", {
-          apiKey: "AIzaSyBQcTnzfhJRp2c7Q7UVgqm9b0wl5L4aMhk",
-        }),
-        prompt: "Responde solo con 'Conexión exitosa con Gemini AI para EduChat del Colegio Moderno'",
-        maxTokens: 30,
-        temperature: 0.1,
+        model: google("gemini-1.5-flash-8b"),
+        prompt: "Responde solo con 'OK' si puedes leer este mensaje.",
+        maxTokens: 10,
+        temperature: 0,
       })
 
+      console.log("Conexión exitosa con Gemini AI")
       return Response.json({
-        success: true,
-        message: result.text,
-        timestamp: new Date().toISOString(),
+        status: "connected",
+        message: "Conexión exitosa con Gemini AI",
         model: "gemini-1.5-flash-8b",
-        attempt: attempt,
+        response: result.text,
+        timestamp: new Date().toISOString(),
       })
     } catch (error: any) {
       lastError = error
@@ -35,26 +33,64 @@ export async function GET() {
         break
       }
 
-      // Esperar antes del siguiente intento
+      // Manejo específico de errores de sobrecarga
       if (error.message?.includes("overloaded") || error.message?.includes("busy")) {
-        const delayMs = Math.pow(2, attempt) * 2000 + Math.random() * 1000
-        console.log(`Esperando ${delayMs}ms antes del reintento`)
-        await delay(delayMs)
-      } else {
-        await delay(1000 * attempt)
+        const delayMs = Math.pow(2, attempt) * 1000 + Math.random() * 1000
+        console.log(`Modelo sobrecargado, esperando ${delayMs}ms antes del reintento ${attempt + 1}`)
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+        continue
       }
+
+      // Para otros errores, esperar menos tiempo
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
     }
   }
 
+  // Manejo de errores después de todos los reintentos
+  if (lastError.message?.includes("overloaded") || lastError.message?.includes("busy")) {
+    return Response.json(
+      {
+        status: "overloaded",
+        message: "El modelo está temporalmente sobrecargado",
+        details: "Los servidores de Gemini están experimentando alta demanda.",
+        retryAfter: 30,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 },
+    )
+  }
+
+  if (lastError.message?.includes("quota") || lastError.message?.includes("exceeded")) {
+    return Response.json(
+      {
+        status: "quota_exceeded",
+        message: "Cuota de API excedida",
+        details: "Verifica tu plan y configuración de facturación en Google Cloud.",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 429 },
+    )
+  }
+
+  if (lastError.message?.includes("API key") || lastError.message?.includes("authentication")) {
+    return Response.json(
+      {
+        status: "auth_error",
+        message: "Error de autenticación",
+        details: "Verifica que la API key de Google Gemini esté configurada correctamente.",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 401 },
+    )
+  }
+
+  // Error genérico
   return Response.json(
     {
-      success: false,
-      error: "Error de conexión con Gemini AI",
-      details: lastError instanceof Error ? lastError.message : "Error desconocido",
+      status: "error",
+      message: "Error de conexión con Gemini AI",
+      details: lastError.message || "Error desconocido",
       timestamp: new Date().toISOString(),
-      suggestion: lastError.message?.includes("overloaded")
-        ? "El servicio está sobrecargado. Intenta nuevamente en unos minutos."
-        : "Verifica tu API key y configuración.",
     },
     { status: 500 },
   )
